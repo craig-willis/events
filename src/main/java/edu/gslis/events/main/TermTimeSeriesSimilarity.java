@@ -9,7 +9,7 @@ import org.apache.commons.io.FileUtils;
 import edu.gslis.temporal.indexes.TimeSeriesIndex;
 import edu.gslis.temporal.util.RUtil;
 
-public class TermTimeSeriesCCF 
+public class TermTimeSeriesSimilarity 
 {
     public static void main(String[] args) throws Exception
     {
@@ -35,9 +35,11 @@ public class TermTimeSeriesCCF
                 double[] ts2 = tsIndex.get(term2);
                 try {
                     double ccf = rutil.ccf(ts1, ts2, 0);
-                    //if (ccf > 0.6) {
-                        out.write(term1 + "," + term2 + "," + ccf +"\n");
-                    //}
+                    double dist = rutil.dist(ts1,  ts2);
+                    double kl = Math.exp(-1*rutil.kl(ts1, ts2));
+                    //double kl2 = rutil.kl2(ts1, ts2);
+
+                    out.write(term1 + "," + term2 + "," + ccf  + "," + dist + "," + kl + "\n");
                 } catch (Exception e) {
                     e.printStackTrace();
                     System.out.println("Error in ccf for " + term1 + "," + term2);
@@ -45,5 +47,12 @@ public class TermTimeSeriesCCF
             }
         }
         out.close();
+    }
+    public static double[] toDoubles(int[] source) {
+        double[] dest = new double[source.length];
+        for(int i=0; i<source.length; i++) {
+            dest[i] = source[i];
+        }
+        return dest;
     }
 }

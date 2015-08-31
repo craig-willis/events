@@ -31,7 +31,7 @@ import edu.gslis.temporal.util.ValueComparableMap;
 import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
 
-public class FindEvents 
+public class FindWikipediaEvents 
 {
     static final double ALPHA = 0.5;
     static final double MU = 2500;
@@ -48,19 +48,16 @@ public class FindEvents
      */
     public static void main(String[] args) throws Exception
     {
-        String tsIndexPath = args[0];
+        String acfTermsPath = args[0];
         String indexPath = args[1];
-        String acfTermsPath = args[2];
-        String ccfTermsPath = args[3];
-        String stopperPath = args[4];
-        String miPath = args[5];
-        String outputPath = args[6];
-        colStart = Integer.parseInt(args[7]);
-        colEnd = Integer.parseInt(args[8]);
-        colInterval = Integer.parseInt(args[9]); 
+        String wpIndexPath = args[2];
+        String stopperPath = args[3];
+        String outputPath = args[4];
+        colStart = Integer.parseInt(args[5]);
+        colEnd = Integer.parseInt(args[6]);
+        colInterval = Integer.parseInt(args[7]); 
         
-        TimeSeriesIndex tsIndex = new TimeSeriesIndex();        
-        tsIndex.open(tsIndexPath, true);
+        Map<String, Double> acfMap = readTermAcf(acfTermsPath);
         
         IndexWrapper index = IndexWrapperFactory.getIndexWrapper(indexPath);
         index.setTimeFieldName(Indexer.FIELD_EPOCH);
@@ -68,129 +65,33 @@ public class FindEvents
         CollectionStats colStats = new IndexBackedCollectionStats();
         colStats.setStatSource(indexPath);
 
-        RUtil rutil = new RUtil();
-        Map<String, Double> acfMap = readTermAcf(acfTermsPath);
-        Map<String, Map<String, Double>> ccfMap = readTermCcf(ccfTermsPath);
-        Map<String, Map<String, Double>> miMap = readTermMi(miPath);
+        IndexWrapper wpIndex = IndexWrapperFactory.getIndexWrapper(wpIndexPath);
+        CollectionStats wpColStats = new IndexBackedCollectionStats();
+        wpColStats.setStatSource(wpIndexPath);
 
         File output = new File(outputPath);
-        FileWriter outputHtml = new FileWriter(output + File.separator + "index.html");
         
-        Map<String, FeatureVector> acfFv = new HashMap<String, FeatureVector>();
+        // Find all terms with high CCF
         List<String> seen = new ArrayList<String>();
         for (String acfTerm: acfMap.keySet()) {
             
             if (seen.contains(acfTerm))
                 continue;
             
-            Map<String, Double> ccfTerms = ccfMap.get(acfTerm);
-            Map<String, Double> miTerms = miMap.get(acfTerm);
-            
-            FeatureVector fv = acfFv.get(acfTerm);
-            if (fv == null) {
-                fv = new FeatureVector(stopper); 
-                fv.addTerm(acfTerm, 1);
-            }
-            if (ccfTerms != null) {
-                for (String term: ccfTerms.keySet()) {
-                    double ccf = ccfTerms.get(term);
-                    try {
-                        if (miTerms.containsKey(term)) {
-                            fv.addTerm(term, ccf);  
-                            seen.add(term);
-                        }
-                    } catch (Exception e) {
-                        
-                    }
-                }
-            }
-            acfFv.put(acfTerm, fv);
-        }
-        
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-        
-        // Read ACF terms
-        for (String acfTerm: acfMap.keySet()) {
-            
-            if (seen.contains(acfTerm))
-                continue;
-            double acf = acfMap.get(acfTerm);
-            double[] ts = tsIndex.get(acfTerm);
-            double sum = 0;
-            for (double t: ts) 
-                sum+=t;
-            
-
-            outputHtml.write("<hr>\n Term: " + acfTerm  + " (acf=" + acf + ", freq=" + sum + ")<br>\n");
-
-            Map<String, Double> ccfTerms = ccfMap.get(acfTerm);
-            int i=0;
-            outputHtml.write("Top terms by time series cross correlation:<br>\n");
-            if (ccfTerms != null) {
-                outputHtml.write("<pre>\n");
-
-                for (String ccfTerm: ccfTerms.keySet()) {
-                    if (i==10) break;
-                    double ccf = ccfTerms.get(ccfTerm);
-                    outputHtml.write(ccfTerm + " " + ccf + "\n");
-                    i++;
-                }
-            }
-            outputHtml.write("</pre>\n");
-            i = 0;
-            outputHtml.write("\n</pre>\n<br>Top terms by normalized PMI:<br>\n\n");
-            Map<String, Double> miTerms = miMap.get(acfTerm);
-            if (miTerms != null) 
-            {
-                outputHtml.write("<pre>\n");
-                for (String miTerm: miTerms.keySet()) {
-                    if (i==10) break;
-                    
-                    try {
-                    double mi = miTerms.get(miTerm);
-                    outputHtml.write(miTerm + " " + mi + "\n");
-                    i++;
-                    } catch (Exception e) {
-                       }
-                }
-                outputHtml.write("</pre>\n");
-            }
-                
-
-
-            FeatureVector fv = acfFv.get(acfTerm);
-            outputHtml.write("<br>Combined feature vector:<br><pre>\n");
-            outputHtml.write(fv + "</pre>\n");
+            FeatureVector fv = new FeatureVector(acfTerm, stopper); 
 
             FeatureVector rm = buildRm(fv, stopper, index, colStats);
-            outputHtml.write("<br>KDE relevance model:<br><pre>\n");
-            outputHtml.write(rm + "</pre>\n");
+            
+            GQuery wpQuery = new GQuery();
+            wpQuery.setFeatureVector(rm);
+            wpQuery.setTitle(acfTerm);
+            SearchHits hits = wpIndex.runQuery(wpQuery, 1);
+            SearchHit hit = hits.getHit(0);
+            String docno = hit.getDocno();
+            System.out.println("\n\nTerm:" + acfTerm);
+            System.out.println(rm);
+            System.out.println("Hit: " + docno);
 
-            rutil.plotcp(acfTerm, ts, output.getAbsolutePath(), colStart, colEnd, colInterval);
-            outputHtml.write("<img src=\"" + acfTerm + "-cp.png\"><br>");
-            
-//            FeatureVector rm = buildRm(acfTerm, stopper, index, colStats);
-//            for (String term: rm.getFeatures())
-//                seen.add(term);
-            
-            int[] cps = rutil.changepoints(ts);
-            long startTime = colStart + cps[0]*colInterval;
-            long endTime = colStart + cps[1]*colInterval;
-            long maxTime = colStart + cps[2]*colInterval;
-            
-            long area = 0;
-            for (int j=cps[0]; j<cps[1]; j++) {
-                area += ts[j];
-            }
-            String start = df.format(new Date(startTime*1000));
-            String end = df.format(new Date(endTime*1000));
-            String max = df.format(new Date(maxTime*1000));
-            outputHtml.write("\t\t start=" + start + "<br>\n");
-            outputHtml.write("\t\t end=" + end + "<br>\n");
-            outputHtml.write("\t\t max=" + max + "<br>\n");
-            outputHtml.write("ms=" + startTime + "," + endTime + "," + maxTime + "<br>\n");
-            outputHtml.write(acfTerm + " area=" + area);
-            outputHtml.flush();
         }
     }
     
