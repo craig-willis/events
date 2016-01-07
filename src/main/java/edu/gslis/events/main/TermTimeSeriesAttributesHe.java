@@ -2,14 +2,15 @@ package edu.gslis.events.main;
 
 import java.io.FileWriter;
 import java.util.List;
-import java.util.Map;
-
-import com.google.common.collect.Ordering;
 
 import edu.gslis.temporal.indexes.TimeSeriesIndex;
 import edu.gslis.temporal.util.RUtil;
-import edu.gslis.temporal.util.ValueComparableMap;
 
+/**
+ * Calculate the term timeseries attributes for the He implementation.
+ * This includes the dominant period and dominant power spectrum.
+ * 
+ */
 public class TermTimeSeriesAttributesHe 
 {
     public static void main(String[] args) throws Exception
@@ -31,8 +32,11 @@ public class TermTimeSeriesAttributesHe
 
         double[] bins = tsIndex.get("_total_");
         double N = 0;
-        for (double t: bins)
-            N+=t;
+        for (int i=0; i< bins.length; i++) {
+            if (bins[i] == 0)
+                bins[i] = 1;
+            N+=bins[i];
+        }
         
         for (String term: terms) {
             double[] ts = tsIndex.get(term);
@@ -48,11 +52,22 @@ public class TermTimeSeriesAttributesHe
                 }
                                
                 if (sum > minOccur) {
-                   double dp = rutil.dp(dfidf);   
-                   double dps = rutil.dps(dfidf);
-                   double[] acf = rutil.acf(dfidf);
-                   out.write(term + "," + dp + "," + dps + "," + acf[0] + "\n");
-                   out.flush();
+                    try
+                    {
+                       double dp = rutil.dp(dfidf);   
+                       double dps = rutil.dps(dfidf);
+                       double[] acf = rutil.acf(dfidf);
+                       out.write(term + "," + dp + "," + dps + "," + acf[0] + "\n");
+                       out.flush();
+                    } catch (Exception e) {
+                        System.err.println(term);
+                        for (int i=0; i<dfidf.length; i++) {
+                            System.out.print(dfidf[i] + " ");
+                        }
+                        System.out.println();
+                        e.printStackTrace();
+
+                    }
                 }
             }
         }

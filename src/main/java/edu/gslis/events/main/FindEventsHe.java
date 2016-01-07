@@ -109,6 +109,9 @@ public class FindEventsHe
             for (String f: r)
                 qv.addTerm(f);
                 
+            System.out.println("\n\n" + qv);
+            
+            /*
             FeatureVector rm = buildRm(qv, stopper, index, colStats);
 
             String title = getQueryTitle(qv);
@@ -127,6 +130,7 @@ public class FindEventsHe
                 System.out.println(title + "," + i + "," + hit.getScore() + "," + hit.getDocno());
             }
             
+            */
             
             // Build simple event model
             /*
