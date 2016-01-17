@@ -40,16 +40,18 @@ public class TermTimeSeriesAttributesHe
         
         for (String term: terms) {
             double[] ts = tsIndex.get(term);
+            int nonEmpty = 0;
             double[] dfidf = new double[ts.length];
             
             if (ts.length > 0 ) {                
                 double sum = 0;
-                for (double t: ts)
+                for (double t: ts) {
+                    if (t > 0) nonEmpty++;
                     sum += t;
-                
-                for (int i=0; i<ts.length; i++) {
-                    dfidf[i] = (ts[i]/bins[i]) + Math.log(N/sum);
                 }
+                
+                for (int i=0; i<ts.length; i++) 
+                    dfidf[i] = (ts[i]/bins[i]) * Math.log(N/sum);
                                
                 if (sum > minOccur) {
                     try
@@ -57,7 +59,9 @@ public class TermTimeSeriesAttributesHe
                        double dp = rutil.dp(dfidf);   
                        double dps = rutil.dps(dfidf);
                        double[] acf = rutil.acf(dfidf);
-                       out.write(term + "," + dp + "," + dps + "," + acf[0] + "\n");
+                       if (dp > ts.length/2 && nonEmpty > 1) {
+                           out.write(term + "," + dp + "," + dps + "," + acf[0] + "\n");
+                       }
                        out.flush();
                     } catch (Exception e) {
                         System.err.println(term);
@@ -66,7 +70,6 @@ public class TermTimeSeriesAttributesHe
                         }
                         System.out.println();
                         e.printStackTrace();
-
                     }
                 }
             }

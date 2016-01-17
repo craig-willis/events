@@ -345,6 +345,7 @@ public class FindEventsNMF
     public static Map<Integer, Map<String, Double>> readFactors(String factorPath) throws Exception 
     {
         Map<Integer, Map<String, Double>> factors = new TreeMap<Integer, Map<String, Double>>();
+        
         List<String> lines = FileUtils.readLines(new File(factorPath));
         for (String line: lines) {
             String[] fields = line.split(",");
