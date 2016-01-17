@@ -1,7 +1,7 @@
 package edu.gslis.temporal.indexes;
 
-import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.apache.commons.cli.CommandLine;
@@ -44,6 +44,7 @@ public class CreateTermTimeIndex
         long startTime = Long.parseLong(cl.getOptionValue("start"));
         long endTime = Long.parseLong(cl.getOptionValue("end"));
         long interval = Long.parseLong(cl.getOptionValue("interval"));
+        boolean df = cl.hasOption("df");
         
         Map<String, Map<Long, Long>> termTimeMap = new TreeMap<String, Map<Long, Long>>();
         Map<Long, Long> totalTimeMap = new TreeMap<Long, Long>();
@@ -71,25 +72,47 @@ public class CreateTermTimeIndex
             if (totalTimeMap.get(t) != null)
                 total = totalTimeMap.get(t);
                 
-            Iterator<String> it = dv.iterator();
-            while (it.hasNext()) {
-                String f = it.next();
-                double w = dv.getFeatureWeight(f);
+            if (df) 
+            { 
+                total += 1;
 
-                Map<Long, Long> timeMap = termTimeMap.get(f);
-                if (timeMap == null)
-                    timeMap = new TreeMap<Long, Long>();
-
-                long freq = 0;
-                if (timeMap.get(t) != null)
-                    freq = timeMap.get(t);
+                Set<String> features = dv.getFeatures();
                 
-                freq += (long)w;
-                total += (long)w;                    
-
-                timeMap.put(t, freq);                
-                termTimeMap.put(f, timeMap);                
+                for (String f: features) {
+                    Map<Long, Long> timeMap = termTimeMap.get(f);
+                    if (timeMap == null)
+                        timeMap = new TreeMap<Long, Long>();
+        
+                    long freq = 0;
+                    if (timeMap.get(t) != null)
+                        freq = timeMap.get(t);
+                    
+                    freq += 1;
+                    timeMap.put(t, freq);                
+                    termTimeMap.put(f, timeMap);  
+                    //System.out.println(docno + "," + f + "," + freq);
+                }
             }
+            else {
+                for (String f: dv.getFeatures()) 
+                {
+                    double w = dv.getFeatureWeight(f);
+    
+                    Map<Long, Long> timeMap = termTimeMap.get(f);
+                    if (timeMap == null)
+                        timeMap = new TreeMap<Long, Long>();
+    
+                    long freq = 0;
+                    if (timeMap.get(t) != null)
+                        freq = timeMap.get(t);
+                    
+                    freq += (long)w;
+                    total += (long)w;                    
+                    timeMap.put(t, freq);                
+                    termTimeMap.put(f, timeMap);  
+                }
+            }
+            
             totalTimeMap.put(t, total);
         }
 
@@ -149,8 +172,7 @@ public class CreateTermTimeIndex
         options.addOption("index", true, "Path to input index");
         options.addOption("start", true, "Start time");
         options.addOption("end", true, "End time");
-        options.addOption("interval", true, "Interval");        
-        options.addOption("format", true, "h2 or csv");        
+        options.addOption("interval", true, "Interval");          
         options.addOption("output", true, "Output time series index");        
         options.addOption("df", false, "If true, event is num docs. If false, event is num terms.");        
         return options;
