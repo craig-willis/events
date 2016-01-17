@@ -49,6 +49,13 @@ public class NYTToTrecText {
             String stopperPath = cl.getOptionValue("stopper");
             stopper = new Stopper(stopperPath);
         }
+        
+        String section = "";
+        boolean checkSection = false;
+        if (cl.hasOption("section")) {
+            checkSection = true;
+            section = cl.getOptionValue("section");
+        }
 
         BufferedInputStream in = new BufferedInputStream(new FileInputStream(inputPath));
         GzipCompressorInputStream gzip = new GzipCompressorInputStream(in);
@@ -85,9 +92,18 @@ public class NYTToTrecText {
                     Date date = nytdoc.getPublicationDate();
                     String headline = nytdoc.getHeadline();
                     
+                    if (checkSection && !section.equals(nytdoc.getSection()))
+                        continue;
+                    
+                    if (nytdoc.getTypesOfMaterial().contains("Summary"))
+                        continue;
+                    
                     if (stem) {
                         body = stem(body, stopper);
                         headline = stem(headline, stopper);
+                    } else if (stopper != null) {
+                        body = stop(body, stopper);
+                        headline = stop(headline, stopper);
                     }
 
                     String docno = entryName.substring(entryName.lastIndexOf("/")+1, entryName.indexOf("."));
@@ -125,6 +141,21 @@ public class NYTToTrecText {
         }
         return stemmed.trim();
     }
+    
+    public static String stop(String text, Stopper stopper) {
+        if (text == null) 
+            return "";
+        text = text.replaceAll("[^a-zA-Z0-9 ]", " ");
+        text = text.toLowerCase();
+        String[] tokens = text.split("\\s+");
+        String stopped = "";
+        for (String token: tokens) {
+            if (!stopper.isStopWord(token))
+                stopped += " " + token;
+        }
+        return stopped.trim();   
+    }
+    
     public static Options createOptions()
     {
         Options options = new Options();
@@ -132,6 +163,7 @@ public class NYTToTrecText {
         options.addOption("output", true, "Path to output file");
         options.addOption("stem", true, "true/false");
         options.addOption("stopper", true, "If set, text is stopped");
+        options.addOption("section", true, "If set, paper section");
         return options;
     }
 }
