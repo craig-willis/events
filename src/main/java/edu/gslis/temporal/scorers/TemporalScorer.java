@@ -138,6 +138,19 @@ public class TemporalScorer extends RerankingScorer
         return kl;
     }
     
+    public static double[] getProportionalWeights(SearchHits hits, int k) {
+        double[] weights = new double[k];
+        
+        double total = 0;
+        for (int i=0; i<k; i++) 
+            total += hits.getHit(i).getScore();
+        for (int i=0; i<k; i++) {
+            weights[i] = hits.getHit(i).getScore()/total;
+        }
+        
+        return weights;
+    }
+    
  
     
     /**

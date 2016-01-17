@@ -69,18 +69,7 @@ public class KDEScorer extends TemporalScorer {
         
         return weights;        
     }
-    public double[] getProportionalWeights(SearchHits hits, int k) {
-        double[] weights = new double[k];
-        
-        double total = 0;
-        for (int i=0; i<k; i++) 
-            total += hits.getHit(i).getScore();
-        for (int i=0; i<k; i++) {
-            weights[i] = hits.getHit(i).getScore()/total;
-        }
-        
-        return weights;
-    }
+
 
     public static double[] getUniformWeights(SearchHits hits) {
         return getUniformWeights(hits, hits.size());

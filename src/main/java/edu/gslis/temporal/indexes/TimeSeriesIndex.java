@@ -87,7 +87,31 @@ public class TimeSeriesIndex {
     }
     public double[] get(String term) 
     {
-        return timeSeriesMap.get(term);
+        return timeSeriesMap.get(term).clone();
+    }
+    
+    public double[] getDfIDF(String term) {
+        
+        double[] bins = timeSeriesMap.get("_total_");
+        double N = 0;
+        for (int i=0; i< bins.length; i++) {
+            if (bins[i] == 0)
+                bins[i] = 1;
+            N+=bins[i];
+        }
+        
+        double[] ts = timeSeriesMap.get(term);
+        double sum = 0;
+        for (double t: ts) {
+            sum += t;
+        }
+        
+        double[] dfidf = new double[ts.length];
+
+        for (int i=0; i<ts.length; i++) 
+            dfidf[i] = (ts[i]/bins[i]) * Math.log(N/sum);
+
+        return dfidf;
     }
     
     public double get(String term, int bin)
