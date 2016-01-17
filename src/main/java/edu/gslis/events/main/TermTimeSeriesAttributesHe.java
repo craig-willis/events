@@ -9,15 +9,16 @@ import edu.gslis.temporal.util.RUtil;
 /**
  * Calculate the term timeseries attributes for the He implementation.
  * This includes the dominant period and dominant power spectrum.
- * 
+ * Output
+ *  Term, DP, DPS, ACF
  */
 public class TermTimeSeriesAttributesHe 
 {
     public static void main(String[] args) throws Exception
     {
-        String tsIndexPath = args[0];
-        String outputPath = args[1];
-        int minOccur = Integer.parseInt(args[2]);
+        String tsIndexPath = args[0];             // Path to file created by CreateTermTimeIndex
+        String outputPath = args[1];              // Output path
+        int minOccur = Integer.parseInt(args[2]); // Minimum term occurrence
         
         TimeSeriesIndex tsIndex = new TimeSeriesIndex();
         
