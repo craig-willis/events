@@ -44,7 +44,8 @@ public class FindEventsHe
     IndexWrapper wpIndex = null;
     Map<String, Double> dominantPeriodMap = new HashMap<String, Double>();
     Map<String, Double> dominantPowerSpectrumMap = new ValueComparableMap<String, Double>(Ordering.natural().reverse());
-    Map<String, FeatureHe> features = new HashMap<String, FeatureHe>();
+    //Map<String, FeatureHe> features = new HashMap<String, FeatureHe>();
+    Map<String, double[]> features = new HashMap<String, double[]>();
     
     RUtil rutil = new RUtil();
     Map<String, Set<Integer>> docids = new HashMap<String, Set<Integer>>();
@@ -92,18 +93,13 @@ public class FindEventsHe
     public void findEvents() throws Exception
     {   
         
-        List<String> hh = new ArrayList<String>();
-        hh.addAll(dominantPowerSpectrumMap.keySet());
         
         Set<String> remove = new HashSet<String>();
 
-        Iterator<String> it = hh.iterator();
         int k=0;
-        while (it.hasNext()) {
-            String f1 = it.next();
+        for (String f1: dominantPowerSpectrumMap.keySet()) {
             
             if (remove.contains(f1)) {
-                it.remove();
                 continue;
             }
             
@@ -112,25 +108,33 @@ public class FindEventsHe
             List<String> r = new ArrayList<String>();
             r.add(f1);
             double c = c(r, null);
-            it.remove();
+            remove.add(f1);
             String min = "";
 
-            while (!hh.isEmpty()) {
+            System.out.println(f1);
+            
+            Set<String> seen = new HashSet<String>();
 
+            List<String> hh = new ArrayList<String>();
+            hh.addAll(dominantPowerSpectrumMap.keySet());
+
+            while (true) 
+            {
                 // Find f2 that minimizes c(R)
                 for (String f2: hh) {
-                    if (f2.equals(f1) || remove.contains(f2)) continue;
-                    double x = 0;
-                    if ( (x = c(r, f2)) < c) {
-                        //System.out.println("\t" + f2 + "," + x);
+                    if (f2.equals(f1) || seen.contains(f2)) continue;
+                    double x = c(r, f2);
+                    System.out.println("\t" + f2 + "," + x + "(" + c + ")");                    
+                    if (x  < c) {
                         c = x; 
                         min = f2;
                     }
                 }
             
                 if (c < c(r, null)) {
+                    System.out.println("\t***" + min + "," + c);
                     r.add(min);
-                    remove.add(min);
+                    seen.add(min);
                 } else {
                     break;
                 }
@@ -143,17 +147,19 @@ public class FindEventsHe
             }
     
             
-            String title = getQueryTitle(qv);
+            String title = getQueryTitle(r);
 
             GQuery wpQuery = new GQuery();
             wpQuery.setFeatureVector(qv);
             wpQuery.setTitle(title);
                         
             
-            System.out.println("ID\t" + k);
-            System.out.println("Event\t");
-            System.out.println("Event model\t" + title);
+            //System.out.println("ID\t" + k);
+            //System.out.println("Event\t");
+            //System.out.println("Event model\t" + title);
+            System.out.println(k + "\t" + title);
 
+            /*
             System.out.println("Google query\thttps://www.google.com/search?q=" + URLEncoder.encode(title, "UTF-8"));
 
             System.out.println("Is this an event?\t");
@@ -171,8 +177,8 @@ public class FindEventsHe
                 SearchHit hit = iter.next();
                 System.out.println("https://en.wikipedia.org/wiki/" + hit.getDocno());
             }
-
-            System.out.println("\n\n");
+            */
+            //System.out.println("\n\n");
     }
 
         
@@ -264,9 +270,9 @@ public class FindEventsHe
     }   
     
     
-    public String getQueryTitle(FeatureVector fv) {
+    public String getQueryTitle(List<String> r) {
         String title = "";
-        for (String f: fv.getFeatures()) {
+        for (String f: r) {
             title += f + " ";
         }
         return title.trim();
@@ -309,28 +315,36 @@ public class FindEventsHe
       
     Map<String, double[][]> burstMap = new HashMap<String, double[][]>();
 
+    double kl_norm (double mu1, double sigma1, double mu2, double sigma2) {
+        return Math.log(sigma2/sigma1) + (Math.pow(sigma1, 2) + Math.pow((mu1-mu2), 2))/(2*Math.pow(sigma2, 2)) - (1/2);    
+    }
     double kl (List<String> r) throws Exception 
     {
         double kl = 0;
         for (String f1: r) {
-            double[] ts1 = features.get(f1).getValue();
+            //double[] ts1 = features.get(f1).getValue();
+            double[] p1 = features.get(f1);
             
             try 
             {                                
     
                 for (String f2: r) {
                     if (f1.equals(f2)) continue;
-                    double[] ts2 = features.get(f2).getValue();
+                    //double[] ts2 = features.get(f2).getValue();
+                    double[] p2 = features.get(f2);
                     
                     // Calculate kl(f1 | f2) and kl(f2 | f1)
-                    double kl1 = rutil.kl2(ts1, ts2);
-                    double kl2 = rutil.kl2(ts2, ts1);
+                    //double kl1 = rutil.kl2(ts1, ts2);
+                    //double kl2 = rutil.kl2(ts2, ts1);
+                    double kl1 = kl_norm(p1[0], p1[1], p2[0], p2[1]);
+                    double kl2 = kl_norm(p2[0], p2[1], p1[0], p1[1]);                    
+                    
                     kl = Math.max(kl, Math.max(kl1, kl2));
                 }
             } catch (Exception e) {
                 String x = new String();
-                for (double d: ts1) 
-                    x += d*100 + " ";
+                for (double d: p1) 
+                    x += d + " ";
                 System.out.println(x);
 
                 System.err.println("Error calculating kl for " + f1);
@@ -442,8 +456,9 @@ public class FindEventsHe
             for (int i=1; i<fields.length; i++) {
                 ts[i-1] = Double.parseDouble(fields[i]);
             }
-            FeatureHe feature = new FeatureHe(term, ts);
-            features.put(key, feature);
+//            FeatureHe feature = new FeatureHe(term, ts);
+//            features.put(key, feature);
+            features.put(key, ts);
 
             if (dpMap.get(term) != null) 
             {

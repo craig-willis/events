@@ -149,6 +149,11 @@
             <groupId>org.knallgrau.utils</groupId>
           <artifactId>textcat</artifactId>
           <version>1.0.1</version>
-        </dependency>             
+        </dependency>
+<dependency>
+    <groupId>jgrapht</groupId>
+    <artifactId>jgrapht</artifactId>
+    <version>0.7.3</version>
+</dependency>                 
   </dependencies>
 </project>

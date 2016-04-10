@@ -340,7 +340,7 @@ public class RUtil {
 		}
 	}
 	
-	public double[][] getBursts(double[] data, int k) throws Exception {
+	public double[][] getBursts(double[] data, int k, int method) throws Exception {
 	    	    
         c.assign("y", data);
         c.voidEval("y <- y*100");
@@ -369,33 +369,38 @@ public class RUtil {
         }
         else {
 
-            /*
-            c.voidEval("burst <- which(y >= mean(y) + 2*sd(y))");
-            c.voidEval("mu <- mean(burst)");
-            c.voidEval("sigma <- sd(burst)");
-            mus = c.eval("mean(x)").asDoubles();
-            sigmas = c.eval("sd(x)").asDoubles();
-            */
-            try
-            {
-                c.voidEval("nmix <- normalmixEM(x, ECM=T, k=" + 2 + ")");
+            if (method == 1) {
                 
-                c.voidEval("dens <- dnorm(nmix$mu, nmix$mu, nmix$sigma)");
-                c.voidEval("lambda <- which(dens == min(dens))");
-                c.voidEval("mu <- nmix$mu[lambda]");
-                c.voidEval("sigma <- nmix$sigma[lambda]");
-    
+                c.voidEval("burst <- which(y >= mean(y) + 2*sd(y))");
+                c.voidEval("mu <- mean(burst)");
+                c.voidEval("sigma <- sd(burst)");
                 mus = c.eval("mu").asDoubles();
                 sigmas = c.eval("sigma").asDoubles();
-            } catch (Exception e) {
+
+            } else if (method == 2) {
+
+                try
+                {
+                    c.voidEval("nmix <- normalmixEM(x, ECM=T, k=" + 2 + ")");
+                    
+                    c.voidEval("dens <- dnorm(nmix$mu, nmix$mu, nmix$sigma)");
+                    c.voidEval("lambda <- which(dens == max(dens))");
+                    c.voidEval("mu <- nmix$mu[lambda]");
+                    c.voidEval("sigma <- nmix$sigma[lambda]");
+        
+                    mus = c.eval("mu").asDoubles();
+                    sigmas = c.eval("sigma").asDoubles();
+                } catch (Exception e) {
+                    mus = c.eval("mean(x)").asDoubles();
+                    sigmas = c.eval("sd(x)").asDoubles();
+                    //c.voidEval("mu <- mean(x)");
+                    //c.voidEval("sigma <- sd(x)");                            
+                }    
+            } else {
+
                 mus = c.eval("mean(x)").asDoubles();
                 sigmas = c.eval("sd(x)").asDoubles();
-                //c.voidEval("mu <- mean(x)");
-                //c.voidEval("sigma <- sd(x)");                            
-            }    
-
-            //c.voidEval("mu <- mean(x)");
-            //c.voidEval("sigma <- sd(x)");            
+            }
         }
         
         return new double[][] { mus, sigmas};
